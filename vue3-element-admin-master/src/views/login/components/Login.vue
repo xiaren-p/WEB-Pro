@@ -1,0 +1,220 @@
+<template>
+  <div>
+    <el-form
+      ref="loginFormRef"
+      :model="loginFormData"
+      :rules="loginRules"
+      size="large"
+      :validate-on-rule-change="false"
+    >
+      <!-- 用户名 -->
+      <el-form-item prop="username">
+        <el-input v-model.trim="loginFormData.username" :placeholder="t('login.username')">
+          <template #prefix>
+            <el-icon><User /></el-icon>
+          </template>
+        </el-input>
+      </el-form-item>
+
+      <!-- 密码 -->
+      <el-tooltip :visible="isCapsLock" :content="t('login.capsLock')" placement="right">
+        <el-form-item prop="password">
+          <el-input
+            v-model.trim="loginFormData.password"
+            :placeholder="t('login.password')"
+            type="password"
+            show-password
+            @keyup="checkCapsLock"
+            @keyup.enter="handleLoginSubmit"
+          >
+            <template #prefix>
+              <el-icon><Lock /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+      </el-tooltip>
+
+      <!-- 验证码 -->
+      <el-form-item prop="captchaCode">
+        <div flex items-center gap-10px>
+          <el-input
+            v-model.trim="loginFormData.captchaCode"
+            :placeholder="t('login.captchaCode')"
+            clearable
+            class="flex-1"
+            @keyup.enter="handleLoginSubmit"
+          >
+            <template #prefix>
+              <div class="i-svg:captcha" />
+            </template>
+          </el-input>
+          <div cursor-pointer h-40px w-120px flex-center @click="getCaptcha">
+            <el-icon v-if="codeLoading" class="is-loading" size="20"><Loading /></el-icon>
+            <img
+              v-else-if="captchaBase64"
+              border-rd-4px
+              object-cover
+              shadow="[0_0_0_1px_var(--el-border-color)_inset]"
+              :src="captchaBase64"
+              alt="captchaCode"
+            />
+            <el-text v-else type="info" size="small">点击获取验证码</el-text>
+          </div>
+        </div>
+      </el-form-item>
+
+      <div class="flex-x-between w-full">
+        <el-checkbox v-model="loginFormData.rememberMe">{{ t("login.rememberMe") }}</el-checkbox>
+      </div>
+
+      <!-- 登录按钮 -->
+      <el-form-item>
+        <el-button :loading="loading" type="primary" class="w-full" @click="handleLoginSubmit">
+          {{ t("login.login") }}
+        </el-button>
+      </el-form-item>
+    </el-form>
+
+    <!-- 取消注册、第三方和忘记密码入口，简化登录页 -->
+  </div>
+</template>
+<script setup lang="ts">
+import type { FormInstance } from "element-plus";
+import { AuthAPI, type LoginFormData } from "@/backend";
+import router from "@/router";
+import { useUserStore } from "@/store";
+import { AuthStorage } from "@/utils/auth";
+
+const { t } = useI18n();
+const userStore = useUserStore();
+const route = useRoute();
+
+onMounted(() => getCaptcha());
+
+const loginFormRef = ref<FormInstance>();
+const loading = ref(false);
+// 是否大写锁定
+const isCapsLock = ref(false);
+// 验证码图片Base64字符串
+const captchaBase64 = ref();
+// 记住我
+const rememberMe = AuthStorage.getRememberMe();
+
+const loginFormData = ref<LoginFormData>({
+  username: "admin",
+  password: "123456",
+  captchaKey: "",
+  captchaCode: "",
+  rememberMe,
+});
+
+const loginRules = computed(() => {
+  return {
+    username: [
+      {
+        required: true,
+        trigger: "blur",
+        message: t("login.message.username.required"),
+      },
+    ],
+    password: [
+      {
+        required: true,
+        trigger: "blur",
+        message: t("login.message.password.required"),
+      },
+      {
+        min: 6,
+        message: t("login.message.password.min"),
+        trigger: "blur",
+      },
+    ],
+    captchaCode: [
+      {
+        required: true,
+        trigger: "blur",
+        message: t("login.message.captchaCode.required"),
+      },
+    ],
+  };
+});
+
+// 获取验证码（返回 Promise，便于在提交前确保已获取到 uuid）
+const codeLoading = ref(false);
+async function getCaptcha() {
+  codeLoading.value = true;
+  try {
+    const data = await AuthAPI.getCaptcha();
+    // 后端返回 { img, uuid }
+    loginFormData.value.captchaKey = (data as any).uuid;
+    captchaBase64.value = (data as any).img;
+    return data;
+  } finally {
+    codeLoading.value = false;
+  }
+}
+
+/**
+ * 登录提交
+ */
+async function handleLoginSubmit() {
+  try {
+    // 1. 表单验证
+    const valid = await loginFormRef.value?.validate();
+    if (!valid) return;
+
+    // 确保已从后端拿到 captchaKey（防止用户过快提交导致未拿到 uuid）
+    if (!loginFormData.value.captchaKey) {
+      await getCaptcha();
+    }
+
+    loading.value = true;
+
+    // 2. 执行登录
+    await userStore.login(loginFormData.value);
+
+    const redirectPath = (route.query.redirect as string) || "/";
+
+    await router.push(decodeURIComponent(redirectPath));
+  } catch (error) {
+    // 4. 统一错误处理
+    getCaptcha(); // 刷新验证码
+    console.error("登录失败:", error);
+  } finally {
+    loading.value = false;
+  }
+}
+
+// 检查输入大小写
+function checkCapsLock(event: KeyboardEvent) {
+  // 防止浏览器密码自动填充时报错
+  if (event instanceof KeyboardEvent) {
+    isCapsLock.value = event.getModifierState("CapsLock");
+  }
+}
+
+// 已移除多表单切换逻辑
+</script>
+
+<style lang="scss" scoped>
+.third-party-login {
+  .divider-container {
+    display: flex;
+    align-items: center;
+    margin: 40px 0;
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(to right, transparent, var(--el-border-color-light), transparent);
+    }
+
+    .divider-text {
+      padding: 0 16px;
+      font-size: 12px;
+      color: var(--el-text-color-regular);
+      white-space: nowrap;
+    }
+  }
+}
+</style>

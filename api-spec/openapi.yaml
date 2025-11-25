@@ -1,0 +1,1537 @@
+openapi: 3.1.0
+info:
+  title: Vue3 Element Admin - Backend API Spec (Slimmed)
+  version: 1.1.0
+  description: |
+    与当前前端（仅仪表盘+系统管理）一致的后端接口规范，返回统一包裹 { code, data, msg }，分页为 { total, list }。
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: string
+        msg:
+          type: string
+        data:
+          nullable: true
+    PageQuery:
+      type: object
+      properties:
+        pageNum:
+          type: integer
+        pageSize:
+          type: integer
+    PageResult:
+      type: object
+      properties:
+        total: { type: integer }
+        list:
+          type: array
+          items: { type: object }
+    OptionType:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: string }
+    LoginForm:
+      type: object
+      properties:
+        username: { type: string }
+        password: { type: string }
+        captchaKey: { type: string }
+        captchaCode: { type: string }
+        rememberMe: { type: boolean }
+      required: [username, password]
+    LoginResult:
+      type: object
+      properties:
+        accessToken: { type: string }
+        refreshToken: { type: string }
+        tokenType: { type: string }
+        expiresIn: { type: integer }
+    CaptchaInfo:
+      type: object
+      properties:
+        captchaKey: { type: string }
+        captchaBase64: { type: string }
+    FileInfo:
+      type: object
+      properties:
+        name: { type: string }
+        url: { type: string }
+    UserInfo:
+      type: object
+      properties:
+        userId: { type: string }
+        username: { type: string }
+        nickname: { type: string }
+        avatar: { type: string }
+        roles:
+          type: array
+          items: { type: string }
+        perms:
+          type: array
+          items: { type: string }
+    RolePageVO:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        name: { type: string }
+        sort: { type: integer }
+        status: { type: integer }
+    NoticePageVO:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        content: { type: string }
+        publishStatus: { type: integer }
+    LogPageVO:
+      type: object
+      properties:
+        id: { type: string }
+        module: { type: string }
+        content: { type: string }
+        requestUri: { type: string }
+        method: { type: string }
+        ip: { type: string }
+        executionTime: { type: number }
+    VisitTrendVO:
+      type: object
+      properties:
+        dates:
+          type: array
+          items: { type: string }
+        pvList:
+          type: array
+          items: { type: integer }
+        uvList:
+          type: array
+          items: { type: integer }
+        ipList:
+          type: array
+          items: { type: integer }
+    VisitStatsVO:
+      type: object
+      properties:
+        todayUvCount: { type: integer }
+        totalUvCount: { type: integer }
+        uvGrowthRate: { type: number }
+        todayPvCount: { type: integer }
+        totalPvCount: { type: integer }
+        pvGrowthRate: { type: number }
+paths:
+  /api/v1/auth/login:
+    post:
+      summary: 登录
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LoginForm'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/auth/refresh-token:
+    post:
+      summary: 刷新 token
+      parameters:
+        - in: query
+          name: refreshToken
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 刷新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/auth/logout:
+    delete:
+      summary: 退出登录
+      responses:
+        '204':
+          description: 已登出
+  /api/v1/auth/captcha:
+    get:
+      summary: 获取验证码
+      responses:
+        '200':
+          description: 验证码信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /api/v1/files/upload:
+    post:
+      summary: 上传文件
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 上传成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/files:
+    delete:
+      summary: 删除文件
+      parameters:
+        - in: query
+          name: url
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/v1/users/me:
+    get:
+      summary: 获取当前登录用户信息
+      responses:
+        '200':
+          description: 用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/users/page:
+    get:
+      summary: 获取用户分页列表
+      responses:
+        '200':
+          description: 用户分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/users/{userId}/form:
+    get:
+      summary: 获取用户表单详情
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 用户表单
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/users:
+    post:
+      summary: 新增用户
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/users/{id}:
+    put:
+      summary: 更新用户
+      responses:
+        '200':
+          description: 更新成功
+    delete:
+      summary: 删除用户（支持批量，逗号分隔）
+      responses:
+        '204':
+          description: 删除成功
+  /api/v1/users/import:
+    post:
+      summary: 导入用户
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 导入结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/users/profile:
+    get:
+      summary: 获取个人中心信息
+      responses:
+        '200':
+          description: 个人信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+    put:
+      summary: 更新个人中心信息
+      responses:
+        '200':
+          description: 更新成功
+  /api/v1/users/password:
+    put:
+      summary: 修改个人密码
+      responses:
+        '200':
+          description: 修改成功
+
+  /api/v1/roles/page:
+    get:
+      summary: 获取角色分页
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/roles:
+    get:
+      summary: 角色列表
+      responses:
+        '200':
+          description: 列表
+    post:
+      summary: 新增角色
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/roles/{id}/form:
+    get:
+      summary: 获取角色表单
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 表单
+  /api/v1/roles/{ids}:
+    put:
+      summary: 更新角色
+      responses:
+        '200':
+          description: 成功
+    delete:
+      summary: 删除角色（支持批量）
+      responses:
+        '204':
+          description: 删除成功
+  /api/v1/roles/{roleId}/menuIds:
+    get:
+      summary: 获取角色菜单ID集合
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 菜单ID数组
+  /api/v1/roles/{roleId}/menus:
+    put:
+      summary: 分配菜单权限
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 更新成功
+
+  /api/v1/menus/routes:
+    get:
+      summary: 获取当前用户的路由列表
+      responses:
+        '200':
+          description: 路由数组
+  /api/v1/menus:
+    get:
+      summary: 获取菜单树形列表
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: 新增菜单
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/menus/options:
+    get:
+      summary: 获取菜单下拉
+      responses:
+        '200':
+          description: OK
+  /api/v1/menus/{id}/form:
+    get:
+      summary: 获取菜单表单
+      responses:
+        '200':
+          description: OK
+  /api/v1/menus/{id}:
+    put:
+      summary: 更新菜单
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: 删除菜单
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/v1/logs/page:
+    get:
+      summary: 日志分页
+      responses:
+        '200':
+          description: 日志分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/logs/visit-trend:
+    get:
+      summary: 获取访问趋势
+      responses:
+        '200':
+          description: OK
+  /api/v1/logs/visit-stats:
+    get:
+      summary: 获取访问统计
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/dicts/page:
+    get:
+      summary: 字典分页
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/dicts:
+    get:
+      summary: 字典列表
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: 创建字典
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/dicts/{id}/form:
+    get:
+      summary: 获取字典表单
+      responses:
+        '200':
+          description: OK
+  /api/v1/dicts/{ids}:
+    put:
+      summary: 更新字典
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: 删除字典（支持批量）
+      responses:
+        '204':
+          description: 删除成功
+  /api/v1/dicts/{dictCode}/items:
+    get:
+      summary: 获取字典项列表
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: 新增字典项
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/dicts/{dictCode}/items/page:
+    get:
+      summary: 字典项分页
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/dicts/{dictCode}/items/options:
+    get:
+      summary: 获取字典项下拉
+      responses:
+        '200':
+          description: OK
+  /api/v1/dicts/{dictCode}/items/{itemId}:
+    put:
+      summary: 更新字典项
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: 删除字典项（支持批量）
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/v1/depts:
+    get:
+      summary: 获取部门列表
+      responses:
+        '200':
+          description: OK
+    post:
+      summary: 新增部门
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/depts/tree:
+    get:
+      summary: 获取部门树形列表
+      responses:
+        '200':
+          description: OK
+  /api/v1/depts/options:
+    get:
+      summary: 获取部门下拉
+      responses:
+        '200':
+          description: OK
+  /api/v1/depts/{id}/form:
+    get:
+      summary: 获取部门表单
+      responses:
+        '200':
+          description: OK
+  /api/v1/depts/{ids}:
+    put:
+      summary: 更新部门
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: 删除部门（支持批量）
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/v1/configs/page:
+    get:
+      summary: 配置分页
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/configs:
+    post:
+      summary: 新增配置
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/configs/{id}/form:
+    get:
+      summary: 获取配置表单
+      responses:
+        '200':
+          description: OK
+  /api/v1/configs/{ids}:
+    put:
+      summary: 更新配置
+      responses:
+        '200':
+          description: OK
+    delete:
+      summary: 删除配置（支持批量）
+      responses:
+        '204':
+          description: 删除成功
+  /api/v1/configs/refresh-cache:
+    post:
+      summary: 刷新配置缓存
+      responses:
+        '200':
+          description: 刷新成功
+
+  /api/v1/notices/page:
+    get:
+      summary: 获取通知分页
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  /api/v1/notices:
+    post:
+      summary: 新增通知
+      responses:
+        '201':
+          description: 创建成功
+  /api/v1/notices/{id}/form:
+    get:
+      summary: 获取通知表单数据
+      responses:
+        '200':
+          description: OK
+  /api/v1/notices/{ids}:
+    put:
+      summary: 更新通知
+      responses:
+        '200':
+          description: 成功
+    delete:
+      summary: 删除通知（支持批量）
+      responses:
+        '204':
+          description: 删除成功
+  /api/v1/notices/{id}/publish:
+    post:
+      summary: 发布通知
+      responses:
+        '200':
+          description: 已发布
+  /api/v1/notices/{id}/revoke:
+    post:
+      summary: 撤回通知
+      responses:
+        '200':
+          description: 已撤回
+  /api/v1/notices/{id}/detail:
+    get:
+      summary: 查看通知详情
+      responses:
+        '200':
+          description: 详情
+  /api/v1/notices/read-all:
+    post:
+      summary: 全部已读
+      responses:
+        '200':
+          description: 已读
+
+security:
+  - BearerAuth: []
+    get:
+      summary: 获取代码生成配置
+      parameters:
+        - in: path
+          name: tableName
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 配置
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenConfigForm'
+    post:
+      summary: 保存代码生成配置
+      parameters:
+        - in: path
+          name: tableName
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenConfigForm'
+      responses:
+        '200':
+          description: 保存成功
+    delete:
+      summary: 重置代码生成配置
+      parameters:
+        - in: path
+          name: tableName
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 已重置
+
+  /api/v1/codegen/{tableName}/preview:
+    get:
+      summary: 获取代码生成预览
+      parameters:
+        - in: path
+          name: tableName
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: pageType
+          schema:
+            type: string
+            enum: [classic, curd]
+      responses:
+        '200':
+          description: 预览列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/v1/codegen/{tableName}/download:
+    get:
+      summary: 下载代码 ZIP
+      parameters:
+        - in: path
+          name: tableName
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: pageType
+          schema:
+            type: string
+            enum: [classic, curd]
+      responses:
+        '200':
+          description: ZIP 二进制流
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+
+  /api/v1/users/me:
+    get:
+      summary: 获取当前登录用户信息
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 用户信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+              examples:
+                success:
+                  value:
+                    userId: "1"
+                    username: admin
+                    nickname: 管理员
+                    avatar: /media/avatars/admin.png
+                    roles: [admin]
+                    perms: ["system:user:list"]
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/users/page:
+    get:
+      summary: 获取用户分页列表
+      parameters:
+        - in: query
+          name: pageNum
+          schema:
+            type: integer
+        - in: query
+          name: pageSize
+          schema:
+            type: integer
+        - in: query
+          name: keywords
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 用户分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+              examples:
+                success:
+                  value:
+                    total: 1
+                    items:
+                      - id: "1"
+                        username: admin
+                        nickname: 管理员
+                        email: admin@example.com
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v1/users/{userId}/form:
+    get:
+      summary: 获取用户表单详情
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 用户表单
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserForm'
+
+  /api/v1/users:
+    post:
+      summary: 新增用户
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserForm'
+      responses:
+        '201':
+          description: 创建成功
+    get:
+      summary: 下载模板或其它 GET 行为 (保留)
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/users/{id}:
+    put:
+      summary: 更新用户
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserForm'
+      responses:
+        '200':
+          description: 更新成功
+    delete:
+      summary: 删除用户（支持批量，逗号分隔）
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 删除成功
+
+  /api/v1/users/{id}/password/reset:
+    put:
+      summary: 重置用户密码
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: password
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 密码已重置
+
+  /api/v1/users/template:
+    get:
+      summary: 下载用户导入模板
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 模板二进制流
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /api/v1/users/export:
+    get:
+      summary: 导出用户
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 导出文件
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+  /api/v1/users/import:
+    post:
+      summary: 导入用户
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: deptId
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 导入结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExcelResult'
+
+  /api/v1/users/profile:
+    get:
+      summary: 获取个人中心信息
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 个人信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserInfo'
+    put:
+      summary: 更新个人中心信息
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserForm'
+      responses:
+        '200':
+          description: 更新成功
+
+  /api/v1/users/password:
+    put:
+      summary: 修改个人密码
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                oldPassword:
+                  type: string
+                newPassword:
+                  type: string
+                confirmPassword:
+                  type: string
+      responses:
+        '200':
+          description: 修改成功
+
+  /api/v1/users/mobile/code:
+    post:
+      summary: 发送短信验证码
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: mobile
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 已发送
+
+  /api/v1/users/mobile:
+    put:
+      summary: 绑定或更换手机号
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mobile:
+                  type: string
+                code:
+                  type: string
+      responses:
+        '200':
+          description: 更新成功
+
+  /api/v1/users/email/code:
+    post:
+      summary: 发送邮箱验证码
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: email
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 已发送
+
+  /api/v1/users/email:
+    put:
+      summary: 绑定或更换邮箱
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                code:
+                  type: string
+      responses:
+        '200':
+          description: 更新成功
+
+  /api/v1/users/options:
+    get:
+      summary: 获取用户下拉列表
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 下拉数据
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionType'
+
+  /api/v1/roles/page:
+    get:
+      summary: 获取角色分页
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+              examples:
+                success:
+                  value:
+                    total: 0
+                    items: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/roles/options:
+    get:
+      summary: 获取角色下拉
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 下拉
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionType'
+
+  /api/v1/roles/{roleId}/menuIds:
+    get:
+      summary: 获取角色菜单ID集合
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 菜单ID数组
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /api/v1/roles/{roleId}/menus:
+    put:
+      summary: 分配菜单权限
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: roleId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: integer
+      responses:
+        '200':
+          description: 更新成功
+
+  /api/v1/notices/page:
+    get:
+      summary: 获取通知分页
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+
+  /api/v1/notices/{id}/form:
+    get:
+      summary: 获取通知表单数据
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 表单
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/notices/{id}/publish:
+    post:
+      summary: 发布通知
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 已发布
+
+  /api/v1/notices/{id}/revoke:
+    post:
+      summary: 撤回通知
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 已撤回
+
+  /api/v1/notices/{id}/detail:
+    get:
+      summary: 查看通知详情
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 详情
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/notices/read-all:
+    put:
+      summary: 全部已读
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 已读
+
+  /api/v1/notices/my-page:
+    get:
+      summary: 我的通知分页
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+
+  /api/v1/menus/routes:
+    get:
+      summary: 获取当前用户的路由列表
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 路由数组
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+              examples:
+                success:
+                  value:
+                    - name: dashboard
+                      path: /dashboard
+                      meta:
+                        title: 仪表盘
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/menus:
+    get:
+      summary: 获取菜单树形列表
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 菜单树
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionType'
+    post:
+      summary: 新增菜单
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: 创建成功
+
+  /api/v1/menus/options:
+    get:
+      summary: 获取菜单下拉
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: onlyParent
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: 下拉
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionType'
+
+  /api/v1/logs/page:
+    get:
+      summary: 日志分页
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 日志分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+              examples:
+                success:
+                  value:
+                    total: 0
+                    items: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/logs/visit-trend:
+    get:
+      summary: 获取访问趋势
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 趋势数据
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/logs/visit-stats:
+    get:
+      summary: 获取访问统计
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 统计数据
+          content:
+            application/json:
+              schema:
+                type: object
+
+  /api/v1/dicts/page:
+    get:
+      summary: 字典分页
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+
+  /api/v1/dicts:
+    get:
+      summary: 字典列表
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OptionType'
+              examples:
+                success:
+                  value:
+                    - label: 性别
+                      value: gender
+                    - label: 状态
+                      value: status
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: 创建字典
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: 创建成功
+
+  /api/v1/dicts/{dictCode}/items:
+    get:
+      summary: 获取字典项列表
+      parameters:
+        - in: path
+          name: dictCode
+          required: true
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 字典项
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+
+  /api/v1/dicts/{dictCode}/items/page:
+    get:
+      summary: 字典项分页
+      parameters:
+        - in: path
+          name: dictCode
+          required: true
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+
+  /api/v1/depts:
+    get:
+      summary: 获取部门树形列表
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 部门树
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+    post:
+      summary: 新增部门
+      security:
+        - BearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: 创建成功
+
+  /api/v1/configs/page:
+    get:
+      summary: 配置分页
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 分页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageResult'
+
+  /api/v1/configs/refresh-cache:
+    post:
+      summary: 刷新配置缓存
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: 刷新成功
+
+security:
+  - BearerAuth: []
+
+tags:
+  - name: auth
+    description: 鉴权相关接口
+  - name: users
+    description: 用户管理相关接口
+  - name: roles
+    description: 角色管理
+  - name: menus
+    description: 菜单与路由
+  - name: notices
+    description: 通知公告
+  - name: logs
+    description: 日志
+  - name: dicts
+    description: 字典管理
+  - name: codegen
+    description: 代码生成

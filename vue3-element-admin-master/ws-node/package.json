@@ -1,0 +1,14 @@
+{
+  "name": "ws-node-service",
+  "version": "1.0.0",
+  "description": "WebSocket 服务，支持 Redis 后端在线人数推送。",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.13.0",
+    "ioredis": "^5.3.2",
+    "dotenv": "^16.4.5"
+  }
+}
